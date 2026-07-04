@@ -8,7 +8,44 @@ import * as path from "path";
 
 export async function POST(req: NextRequest) {
   try {
+    const externalReviewerUrl = process.env.EXTERNAL_REVIEWER_URL;
+    const isProxyRequest = req.headers.get("X-Crosscheck-Proxy") === "true";
+
     const workerOutput = await req.json();
+
+    if (externalReviewerUrl && !isProxyRequest) {
+      console.log(`[API Reviewer] Forwarding review request to external Docker host: ${externalReviewerUrl}`);
+      try {
+        const response = await fetch(externalReviewerUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Crosscheck-Proxy": "true",
+          },
+          body: JSON.stringify(workerOutput),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg = errorData.error || response.statusText || `Status ${response.status}`;
+          console.error(`[API Reviewer] External reviewer returned error:`, errorMsg);
+          return NextResponse.json(
+            { error: `External reviewer error: ${errorMsg}` },
+            { status: response.status }
+          );
+        }
+
+        const verdict = await response.json();
+        return NextResponse.json(verdict);
+      } catch (proxyError: any) {
+        console.error("[API Reviewer] Proxy to external reviewer failed:", proxyError);
+        return NextResponse.json(
+          { error: `Failed to connect to external Docker host: ${proxyError.message}` },
+          { status: 502 }
+        );
+      }
+    }
+
     const { agentId, bugId, originalFile, patchedFile, diffSummary } = workerOutput;
 
     if (!agentId || !bugId || !originalFile || !patchedFile) {
