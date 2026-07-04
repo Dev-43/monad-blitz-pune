@@ -28,7 +28,10 @@ export const monadTestnet = defineChain({
 });
 
 const rpcUrl = process.env.MONAD_RPC_URL || "https://testnet-rpc.monad.xyz";
-const privateKey = process.env.PRIVATE_KEY;
+let privateKey = process.env.PRIVATE_KEY;
+if (privateKey && !privateKey.startsWith("0x")) {
+  privateKey = `0x${privateKey}`;
+}
 
 export const publicClient = createPublicClient({
   chain: monadTestnet,

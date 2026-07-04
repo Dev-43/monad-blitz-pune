@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeReputationFeedback } from "../../../../lib/chain/erc8004";
-import { ChainResult } from "../../../../lib/shared/types";
+import { writeReputationFeedback } from "@/lib/chain/erc8004";
+import { ChainResult } from "@/lib/shared/types";
 
 export async function POST(req: NextRequest) {
   try {
     const verdict = await req.json();
-    const { agentId, passed } = verdict;
+    const { agentId } = verdict;
 
     if (!agentId) {
       return NextResponse.json(
-        { error: "Invalid ReviewerVerdict payload" },
+        { error: "Invalid ReviewerVerdict payload: agentId is required" },
         { status: 400 }
       );
     }
