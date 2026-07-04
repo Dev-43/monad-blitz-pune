@@ -3,6 +3,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 
 const execAsync = promisify(exec);
 
@@ -31,7 +32,7 @@ async function runTestRun(
   fileContents: string,
   testFileContents: string
 ): Promise<TestRunResult> {
-  const sandboxDir = path.resolve(process.cwd(), "tmp-sandbox");
+  const sandboxDir = path.resolve(os.tmpdir(), "tmp-sandbox");
   if (!fs.existsSync(sandboxDir)) {
     fs.mkdirSync(sandboxDir, { recursive: true });
   }
