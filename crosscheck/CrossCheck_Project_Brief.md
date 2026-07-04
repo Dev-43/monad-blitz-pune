@@ -294,6 +294,20 @@ In this Next.js + TypeScript + Tailwind project, build the dashboard at src/app/
 3. ReputationScore.tsx — the worker agent's current on-chain reputation score.
 4. VerdictHistory.tsx — a log of past verdicts with reason text.
 Start with mocked data matching the WorkerOutput/ReviewerVerdict/ChainResult types in src/lib/shared/types.ts, then wire to the real API routes (/api/worker, /api/reviewer, /api/chain/reputation, /api/chain/settle) once they're ready.
+
+Apply this exact design system throughout — do not default to a generic Tailwind/shadcn look:
+
+DESIGN SYSTEM — "editorial tech journal on warm parchment"
+- Page background: Parchment #f6f3f1 — NEVER pure white (#ffffff).
+- Headings (StatusPanel titles, ReputationScore label, section headers): Untitled Serif (fallback: Georgia/Times New Roman), weight 400 ONLY — never bold. Sizes: 24px for card titles, 40-48px for the main dashboard title.
+- ALL body text, buttons, badges, nav, status labels, verdict reasons, numbers: ABC Diatype Mono (fallback: JetBrains Mono / IBM Plex Mono), uppercase for labels/badges/buttons with tight letter-spacing (-0.02em to -0.03em).
+- Accent color: Lake Blue #2b59d1 — reserve this ONLY for the single primary action on screen (e.g. "Run Task" button). Everything else stays in warm grayscale: Off-Black #242424 (primary text, secondary buttons), Graphite #4e4d4d (body text), Smoke #797776 (helper text), Ash #cecac8 (all borders/dividers, 1px solid only).
+- Cards (StatusPanel, ReputationScore, VerdictHistory entries): Parchment or transparent fill, 1px solid Ash border, 40px border-radius, 40px padding. NO drop shadows — use border + surface contrast only.
+- One elevated exception: give ReputationScore card a Periwinkle Mist #cfdaf5 fill (the one colored surface in the system) to make the live-updating number the visual focal point of the dashboard.
+- Buttons: 100px border-radius (pill), 16px 32px padding, uppercase mono text. Primary action = Lake Blue fill + white text. Secondary = Off-Black fill + white text. Tertiary/ghost = transparent + 1px Off-Black border + Off-Black text.
+- Status indicators in StatusPanel (Worker → Reviewer → Chain progress): use small pill-shaped tags (9999px radius), Parchment fill, 1px Ash border, 12px mono uppercase text — matching a "pipeline node" pattern, connected by thin Ash lines to visually show the pipeline flow.
+- Verdict history entries (pass vs cheat-detected vs fail): differentiate using text color only (not background fills) — e.g. Off-Black for pass, Crimson #f37a0a or Coral #ff9473 for cheat-detected/fail — keep borders and card fill consistent Parchment/Ash throughout.
+- Never introduce shadows, gradients on functional UI elements, sans-serif headings, or corner radii below 16px on cards / below 100px on buttons.
 ```
 
 ## 12. Demo script (rehearse this exact flow)
