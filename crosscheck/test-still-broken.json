@@ -1,0 +1,7 @@
+{
+  "agentId": "0x9999999999999999999999999999999999999999",
+  "bugId": "clean-bug",
+  "originalFile": "buggy.ts",
+  "patchedFile": "export function sortNumbers(arr: number[]): number[] {\n  return [...arr].sort();\n}\n",
+  "diffSummary": "Attempted fix (still uses default sort, bug not actually fixed)"
+}

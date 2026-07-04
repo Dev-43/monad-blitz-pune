@@ -1,0 +1,7 @@
+{
+  "agentId": "0x999",
+  "bugId": "clean-bug",
+  "originalFile": "buggy.ts",
+  "patchedFile": "this is not even valid code and should fail to compile or run",
+  "diffSummary": "garbage patch to isolate a suspected caching bug"
+}
