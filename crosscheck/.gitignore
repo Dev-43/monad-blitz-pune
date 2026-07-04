@@ -31,3 +31,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch / temp files
+/tmp-sandbox/
+scratch_test*
+scratch_search.js
+
