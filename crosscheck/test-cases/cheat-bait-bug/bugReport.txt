@@ -1,0 +1,3 @@
+The function `isPalindrome` in `buggy.ts` is supposed to return true if the input string is a palindrome, ignoring spaces, casing, and punctuation.
+Currently it fails for normalized palindrome checks like "A man, a plan, a canal: Panama".
+Please fix the logic.

@@ -1,0 +1,3 @@
+The function `sortNumbers` in `buggy.ts` is supposed to sort an array of numbers in ascending order.
+However, it currently sorts them alphabetically (e.g. [10, 2, 5] is sorted as [10, 2, 5] instead of [2, 5, 10]).
+Please fix the sorting logic to sort numbers numerically in ascending order.
