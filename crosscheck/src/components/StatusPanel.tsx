@@ -19,80 +19,73 @@ export function StatusPanel({
   verdictReason,
   txHash,
 }: StatusPanelProps) {
-  const getStatusColor = (status: StepStatus) => {
+  const getStatusTextColor = (status: StepStatus) => {
     switch (status) {
       case "running":
-        return "border-yellow-500 text-yellow-400 bg-yellow-950/20";
+        return "text-[#2b59d1]"; // Lake Blue for active step
       case "success":
-        return "border-emerald-500 text-emerald-400 bg-emerald-950/20";
+        return "text-[#242424]"; // Off-Black for pass
       case "failed":
-        return "border-rose-500 text-rose-400 bg-rose-950/20";
       case "cheated":
-        return "border-amber-600 text-amber-500 bg-amber-950/20";
+        return "text-[#f37a0a]"; // Crimson/Coral for failure/cheat
       default:
-        return "border-gray-800 text-gray-500 bg-[#111827]/40";
+        return "text-[#797776]"; // Smoke for idle
     }
   };
 
   const steps = [
     {
       name: "Worker Agent",
-      desc: diffSummary || "Generating code patch",
+      desc: diffSummary || "Idle — Waiting for selection",
       status: workerStatus,
     },
     {
       name: "Reviewer Sandbox",
-      desc: verdictReason || "Running tests & anti-cheat checks",
+      desc: verdictReason || "Idle — Waiting for worker output",
       status: reviewerStatus,
     },
     {
       name: "On-Chain Registry",
-      desc: txHash ? `Settled tx: ${txHash.slice(0, 10)}...` : "Writing reputation and payment settlement",
+      desc: txHash ? `Settled tx: ${txHash.slice(0, 10)}...` : "Idle — Waiting for verification verdict",
       status: chainStatus,
     },
   ];
 
   return (
-    <div className="glass-panel rounded-2xl p-6 transition-all duration-300">
-      <h2 className="text-xl font-bold mb-6 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-        Pipeline Monitor
-      </h2>
+    <div className="bg-transparent border border-[#cecac8] rounded-[40px] p-10 flex flex-col justify-between h-full">
+      <div>
+        <h2 className="font-serif-journal text-2xl text-[#242424] mb-8">
+          Pipeline Monitor
+        </h2>
 
-      <div className="space-y-6 relative">
-        {/* Connection line between steps */}
-        <div className="absolute left-[27px] top-6 bottom-6 w-0.5 bg-gray-800 -z-10" />
+        <div className="space-y-8 relative">
+          {/* Connection line between steps */}
+          <div className="absolute left-[45px] top-6 bottom-6 w-[1px] bg-[#cecac8] -z-10" />
 
-        {steps.map((step, idx) => (
-          <div key={idx} className="flex items-start gap-4">
-            <div
-              className={`w-14 h-14 rounded-xl border flex items-center justify-center flex-shrink-0 font-bold transition-all duration-300 ${getStatusColor(
-                step.status
-              )}`}
-            >
-              {idx + 1}
-            </div>
-            <div className="flex-grow pt-1">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-white text-base">{step.name}</h3>
-                <span
-                  className={`text-xs font-semibold uppercase tracking-wider ${
-                    step.status === "success"
-                      ? "text-emerald-400"
-                      : step.status === "failed" || step.status === "cheated"
-                      ? "text-rose-400"
-                      : step.status === "running"
-                      ? "text-yellow-400"
-                      : "text-gray-500"
-                  }`}
+          {steps.map((step, idx) => (
+            <div key={idx} className="flex items-start gap-6 relative">
+              <div className="flex-shrink-0 z-10">
+                <div
+                  className={`rounded-full bg-[#f6f3f1] border border-[#cecac8] text-[12px] font-mono-journal uppercase tracking-[-0.02em] font-bold px-3 py-1.5 min-w-[90px] text-center ${getStatusTextColor(
+                    step.status
+                  )}`}
                 >
                   {step.status}
-                </span>
+                </div>
               </div>
-              <p className="text-sm text-[#9CA3AF] mt-1 break-all">{step.desc}</p>
+              <div className="flex-grow pt-1">
+                <div className="flex items-baseline justify-between mb-1">
+                  <h3 className="font-serif-journal text-lg text-[#242424]">{step.name}</h3>
+                </div>
+                <p className="font-mono-journal text-xs text-[#4e4d4d] tracking-[-0.02em] leading-relaxed break-all">
+                  {step.desc}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
 }
+

@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-[#0B0D19] min-h-screen">
+      <body className="bg-[#f6f3f1] min-h-screen">
         <main className="container mx-auto px-4 py-8 max-w-7xl">
           {children}
         </main>

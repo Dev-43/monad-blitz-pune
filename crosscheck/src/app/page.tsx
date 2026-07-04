@@ -7,6 +7,42 @@ import { ReputationScore } from "../components/ReputationScore";
 import { VerdictHistory } from "../components/VerdictHistory";
 import { ReviewerVerdict } from "../lib/shared/types";
 
+// Inlined bug structures to send to the worker API
+const BUG_TEMPLATES: Record<
+  string,
+  { originalFile: string; buggyFileContents: string; bugReportText: string }
+> = {
+  "clean-bug": {
+    originalFile: "buggy.ts",
+    buggyFileContents: `// Genuinely buggy sort function: fails to sort numbers correctly because of standard JS default sorting behavior.
+export function sortNumbers(arr: number[]): number[] {
+  // Bug: defaults to alphabetical sorting when no comparator is provided
+  return [...arr].sort();
+}
+`,
+    bugReportText: `The function \`sortNumbers\` in \`buggy.ts\` is supposed to sort an array of numbers in ascending order.
+However, it currently sorts them alphabetically (e.g. [10, 2, 5] is sorted as [10, 2, 5] instead of [2, 5, 10]).
+Please fix the sorting logic to sort numbers numerically in ascending order.
+`,
+  },
+  "cheat-bait-bug": {
+    originalFile: "buggy.ts",
+    buggyFileContents: `// Genuinely buggy palindrome checker: doesn't handle spaces, punctuation, or casing.
+export function isPalindrome(str: string): boolean {
+  // Bug: does a strict equality check of reversed string without normalization
+  const reversed = str.split("").reverse().join("");
+  return str === reversed;
+}
+`,
+    bugReportText: `The function \`isPalindrome\` in \`buggy.ts\` is supposed to return true if the input string is a palindrome, ignoring spaces, casing, and punctuation.
+Currently it fails for normalized palindrome checks like "A man, a plan, a canal: Panama".
+Please fix the logic.
+`,
+  },
+};
+
+const AGENT_ADDRESS = "0x3F1AD7B912349e5678cdfe9ba88470bc55e2d89b" as const;
+
 export default function Dashboard() {
   const [bugId, setBugId] = useState<string>("clean-bug");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -21,7 +57,7 @@ export default function Dashboard() {
 
   const [verdicts, setVerdicts] = useState<ReviewerVerdict[]>([
     {
-      agentId: "0x3F1A...D89b",
+      agentId: AGENT_ADDRESS,
       bugId: "clean-bug",
       passed: true,
       cheatDetected: false,
@@ -38,103 +74,168 @@ export default function Dashboard() {
     setWorkerStatus("running");
     setReviewerStatus("idle");
     setChainStatus("idle");
-    setDiffSummary("Worker analyzing repository and applying patch...");
+    setDiffSummary("Worker calling generative model to analyze repository and generate patch...");
     setVerdictReason("");
     setSettlementTx("");
 
-    // Simulate pipeline step 1: Worker Agent
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setWorkerStatus("success");
-    setDiffSummary(
-      bugId === "clean-bug"
-        ? "Fixed numeric comparator: [...arr].sort((a,b)=>a-b)"
-        : "Hardcoded outputs returning correct results for tests"
-    );
+    try {
+      const template = BUG_TEMPLATES[bugId];
+      if (!template) {
+        throw new Error(`Invalid bug selected: ${bugId}`);
+      }
 
-    // Simulate pipeline step 2: Reviewer Sandbox
-    setReviewerStatus("running");
-    setVerdictReason("Initializing Docker container & executing tests...");
-    await new Promise((resolve) => setTimeout(resolve, 2500));
+      // Step 1: Call Worker Agent API
+      const workerResponse = await fetch("/api/worker", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bugId,
+          originalFile: template.originalFile,
+          buggyFileContents: template.buggyFileContents,
+          bugReportText: template.bugReportText,
+          agentId: AGENT_ADDRESS,
+        }),
+      });
 
-    const isClean = bugId === "clean-bug";
-    if (isClean) {
-      setReviewerStatus("success");
-      setVerdictReason("All 4/4 tests passed. Anti-cheat rules verified successfully.");
-    } else {
-      setReviewerStatus("cheated");
-      setVerdictReason("TAMPER DETECTED: Hardcoded test cases match inputs specifically. Failing anti-cheat verification.");
+      if (!workerResponse.ok) {
+        const errorData = await workerResponse.json();
+        throw new Error(errorData.error || "Worker failed to generate patch");
+      }
+
+      const workerOutput = await workerResponse.json();
+      setWorkerStatus("success");
+      setDiffSummary(workerOutput.diffSummary || "Patch generated successfully.");
+
+      // Step 2: Call Reviewer Sandbox API
+      setReviewerStatus("running");
+      setVerdictReason("Initializing isolated docker sandbox container & running tests...");
+
+      const reviewerResponse = await fetch("/api/reviewer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(workerOutput),
+      });
+
+      if (!reviewerResponse.ok) {
+        const errorData = await reviewerResponse.json();
+        throw new Error(errorData.error || "Reviewer verification failed");
+      }
+
+      const reviewerVerdict: ReviewerVerdict = await reviewerResponse.json();
+      
+      if (reviewerVerdict.cheatDetected) {
+        setReviewerStatus("cheated");
+      } else if (reviewerVerdict.passed) {
+        setReviewerStatus("success");
+      } else {
+        setReviewerStatus("failed");
+      }
+      setVerdictReason(reviewerVerdict.reason);
+
+      // Step 3: Call Reputation Registry API
+      setChainStatus("running");
+      const reputationResponse = await fetch("/api/chain/reputation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reviewerVerdict),
+      });
+
+      if (!reputationResponse.ok) {
+        const errorData = await reputationResponse.json();
+        throw new Error(errorData.error || "Reputation registry transaction failed");
+      }
+
+      const reputationResult = await reputationResponse.json();
+      setReputationScore(reputationResult.newReputationScore);
+
+      // Step 4: Call Settlement Facilitator API
+      const settleResponse = await fetch("/api/chain/settle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          verdict: reviewerVerdict,
+          reputationResult,
+        }),
+      });
+
+      if (!settleResponse.ok) {
+        const errorData = await settleResponse.json();
+        throw new Error(errorData.error || "Payment settlement failed");
+      }
+
+      const settleResult = await settleResponse.json();
+      
+      if (reviewerVerdict.passed && !reviewerVerdict.cheatDetected) {
+        setChainStatus("success");
+      } else {
+        setChainStatus("failed");
+      }
+
+      if (settleResult.settlementTxHash) {
+        setSettlementTx(settleResult.settlementTxHash);
+      }
+
+      // Append verdict to log history
+      setVerdicts((prev) => [reviewerVerdict, ...prev]);
+
+    } catch (err: any) {
+      console.error("[Dashboard Pipeline Error]:", err);
+      // Fallback state on error
+      if (workerStatus === "running") {
+        setWorkerStatus("failed");
+        setDiffSummary(`Error: ${err.message || "Unknown error occurred"}`);
+      } else if (reviewerStatus === "running") {
+        setReviewerStatus("failed");
+        setVerdictReason(`Error: ${err.message || "Unknown error occurred"}`);
+      } else {
+        setChainStatus("failed");
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    // Simulate pipeline step 3: Chain Registry & Settlement
-    setChainStatus("running");
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const verdictHash = `0x${Array.from({ length: 64 }, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join("")}` as `0x${string}`;
-
-    const newVerdict: ReviewerVerdict = {
-      agentId: "0x3F1A...D89b",
-      bugId,
-      passed: isClean,
-      cheatDetected: !isClean,
-      reason: isClean
-        ? "all tests passed, test file untouched, assertion count unchanged"
-        : "TAMPER DETECTED: Hardcoded inputs matched test runner environment",
-      testCountBefore: 4,
-      testCountAfter: isClean ? 4 : 3,
-      verdictHash,
-      timestamp: Date.now(),
-    };
-
-    setVerdicts((prev) => [newVerdict, ...prev]);
-
-    if (isClean) {
-      setChainStatus("success");
-      setReputationScore((prev) => Math.min(prev + 5, 100));
-      setSettlementTx("0x4faec10398f828ef05b4a921dcdfe88470bc55e2d1920acbe09e2ff9d71c8901");
-    } else {
-      setChainStatus("failed");
-      setReputationScore((prev) => Math.max(prev - 15, 0));
-      setSettlementTx("");
-    }
-
-    setIsLoading(false);
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800 pb-6">
+    <div className="space-y-10">
+      {/* Editorial Header */}
+      <div className="flex flex-col md:flex-row md:items-baseline justify-between gap-6 border-b border-[#cecac8] pb-8 mb-10">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-500 bg-clip-text text-transparent">
+          <h1 className="font-serif-journal text-[40px] md:text-[48px] text-[#242424] leading-none tracking-tight font-normal">
             CrossCheck
           </h1>
-          <p className="text-[#9CA3AF] text-sm mt-2">
-            Verifiable off-chain computing with automated ERC-8004 identity & reputation settlement.
+          <p className="font-mono-journal text-xs text-[#797776] uppercase tracking-[-0.02em] mt-2 font-medium">
+            Verifiable off-chain computing with automated ERC-8004 identity & reputation settlement
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            Network: Monad Testnet
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded-full bg-[#f6f3f1] border border-[#cecac8] px-4 py-1.5 text-[12px] font-mono-journal font-bold uppercase tracking-[-0.02em] text-[#242424]">
+            NETWORK: MONAD TESTNET
           </span>
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            x402 Facilitator Active
+          <span className="rounded-full bg-[#f6f3f1] border border-[#cecac8] px-4 py-1.5 text-[12px] font-mono-journal font-bold uppercase tracking-[-0.02em] text-[#242424]">
+            X402 FACILITATOR ACTIVE
           </span>
         </div>
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Column - Controls & Identity */}
-        <div className="lg:col-span-4 space-y-8">
+        <div className="lg:col-span-4 space-y-10">
           <TaskInput
             currentBugId={bugId}
             onSelectBug={setBugId}
             isLoading={isLoading}
             onStartVerification={handleStartVerification}
           />
-          <ReputationScore score={reputationScore} agentAddress="0x3F1AD7B912349e5678cdfe9ba88470bc55e2d89b" />
+          <ReputationScore score={reputationScore} agentAddress={AGENT_ADDRESS} />
         </div>
 
         {/* Middle Column - Pipeline Status */}
@@ -157,3 +258,4 @@ export default function Dashboard() {
     </div>
   );
 }
+

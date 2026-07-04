@@ -1,28 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   body {
-    @apply bg-[#0B0D19] text-[#F3F4F6] font-sans antialiased selection:bg-[#4F46E5] selection:text-white;
+    background-color: #f6f3f1;
+    color: #242424;
+    font-family: 'ABC Diatype Mono', 'JetBrains Mono', 'IBM Plex Mono', monospace;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Untitled Serif', Georgia, 'Times New Roman', serif;
+    font-weight: 400 !important;
   }
 }
 
-/* Glassmorphism styling and animations */
-.glass-panel {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.font-serif-journal {
+  font-family: 'Untitled Serif', Georgia, 'Times New Roman', serif;
+  font-weight: 400 !important;
 }
 
-.glow-indigo {
-  box-shadow: 0 0 25px -5px rgba(79, 70, 229, 0.4);
+.font-mono-journal {
+  font-family: 'ABC Diatype Mono', 'JetBrains Mono', 'IBM Plex Mono', monospace;
 }
 
-.glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.4);
-}
-
-.glow-rose {
-  box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.4);
-}
